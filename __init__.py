@@ -1,0 +1,2 @@
+name = 'ltspice'
+import ltspice

@@ -1,4 +1,4 @@
-# Ltspice data parsing library for python
+# LTSpice data parsing library for python
 
 ## Installation
 
@@ -16,4 +16,12 @@ l.parse() # Data loading sequence. It may take few minutes.
 
 time = l.getTime()
 V1 = l.getData('V(N1)')
+```
+
+## Test
+
+```python
+import ltspice
+import matplotlib.pyplot as plt
+import numpy as np
 ```

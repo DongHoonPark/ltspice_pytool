@@ -1,2 +1,2 @@
 name = 'ltspice'
-from ltspice import *
+from .ltspice import *

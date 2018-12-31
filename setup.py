@@ -2,7 +2,7 @@ from distutils.core import setup
 setup(
   name = 'ltspice',         # How you named your package folder (MyLib)
   packages = ['ltspice'],   # Chose the same as "name"
-  version = '0.2.3',      # Start with a small number and increase it with every change you make
+  version = '0.2.5',      # Start with a small number and increase it with every change you make
   license='MIT',        # Chose a license from here: https://help.github.com/articles/licensing-a-repository
   description = 'DESC',   # Give a short description about your library
   author = 'DonghoonPark',                   # Type in your name

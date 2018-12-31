@@ -111,6 +111,18 @@ class Ltspice:
     def getTime(self, case=0):
         return np.abs(self.time_raw[self.time_split_point[case]:self.time_split_point[case+1]])
 
+    def getVariableNames(self, case=0):
+        return self.v_list
+
+    def getVariableTypes(self, case=0):
+        return self.t_list
+
+    def getCaseNumber(self):
+        return self.c_number
+
+    def getVariableNumber(self):
+        return self.v_number
+
 class Tools:
     def __init__(self):
         self.metaParam = 'MParameter'

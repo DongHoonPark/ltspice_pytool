@@ -1,10 +1,17 @@
 from distutils.core import setup
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
   name = 'ltspice',         # How you named your package folder (MyLib)
   packages = ['ltspice'],   # Chose the same as "name"
-  version = '0.2.5',      # Start with a small number and increase it with every change you make
+  version = '0.2.7',      # Start with a small number and increase it with every change you make
   license='MIT',        # Chose a license from here: https://help.github.com/articles/licensing-a-repository
   description = 'DESC',   # Give a short description about your library
+  long_description=long_description,
+  long_description_content_type="text/markdown",
+  url='https://github.com/DongHoonPark/ltspice_pytool',
   author = 'DonghoonPark',                   # Type in your name
   author_email = 'donghun94@snu.ac.kr',      # Type in your E-Mail
   download_url = 'https://pypi.org/project/ltspice',

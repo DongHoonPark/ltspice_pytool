@@ -50,3 +50,7 @@ plt.show()
 #### Output result
 <img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/01_RC_circuit.PNG?raw=true" width="500">
 
+### 02 - Multi point simulation
+
+#### LTSpice file (.asc)
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/02_Rectifier.JPG?raw=true" width="500">

@@ -21,7 +21,12 @@ V1 = l.getData('V(N1)')
 ## Test
 
 ### 01 - RC Circuit
+
+#### LTSpice file (.asc)
+
 <img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/01_RC_circuit.JPG?raw=true" width="500">
+
+#### Python code (.py)
 
 ```python
 import ltspice
@@ -41,4 +46,7 @@ plt.plot(time, V_source)
 plt.plot(time, V_cap)
 plt.show()
 ```
+
+#### Output result
 <img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/01_RC_circuit.PNG?raw=true" width="500">
+

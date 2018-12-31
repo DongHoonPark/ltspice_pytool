@@ -14,6 +14,8 @@ V_source = l.getData('V(source)')
 plt.plot(time, V_source)
 for i in range(l.c_number): # Iteration in simulation cases 
     time = l.getTime(i)
+    # Case number starts from zero
+    # Each case has different time point numbers
     V_cap = l.getData('V(cap,pgnd)',i)
     plt.plot(time, V_cap)
 

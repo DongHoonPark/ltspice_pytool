@@ -73,7 +73,9 @@ V_source = l.getData('V(source)')
 
 plt.plot(time, V_source)
 for i in range(l.c_number): # Iteration in simulation cases 
-    time = l.getTime(i)
+    time = l.getTime(i) 
+    # Case number starts from zero
+    # Each case has different time point numbers
     V_cap = l.getData('V(cap,pgnd)',i)
     plt.plot(time, V_cap)
 
@@ -84,4 +86,5 @@ plt.show()
 ```
 
 #### Output result
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/02_Rectifier.PNG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/02_Rectifier.png?raw=true" width="500">
+

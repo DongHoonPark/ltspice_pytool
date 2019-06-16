@@ -1,0 +1,10 @@
+README.md
+setup.cfg
+setup.py
+ltspice/__init__.py
+ltspice/ltspice.py
+ltspice.egg-info/PKG-INFO
+ltspice.egg-info/SOURCES.txt
+ltspice.egg-info/dependency_links.txt
+ltspice.egg-info/requires.txt
+ltspice.egg-info/top_level.txt

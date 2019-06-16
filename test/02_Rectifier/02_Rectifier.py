@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-l = ltspice.Ltspice(os.path.dirname(__file__)+'\\02_Rectifier.raw') 
+l = ltspice.Ltspice(os.path.dirname(__file__)+'/02_Rectifier.raw') 
 # Make sure that the .raw file is located in the correct path
 l.parse() 
 

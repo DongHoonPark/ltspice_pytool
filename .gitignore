@@ -2,3 +2,7 @@
 *.log
 *.net
 *.tar.gz
+*.whl
+ltspice.egg-info/*
+dist/*
+build/*

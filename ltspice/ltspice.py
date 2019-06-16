@@ -94,10 +94,10 @@ class Ltspice:
 
         self.data_raw = np.reshape(np.array(self.data_raw), (self.p_number, (self.v_number+1)))
     
-    def getData(self, v_name, case=0):
+    def getData(self, v_name, case=0, time=None):
         if(',' in v_name):
             v_names = re.split(',|\(|\)',v_name)
-            return self.getData('V('+v_names[1]+')', case) - self.getData('V('+v_names[2]+')', case)
+            return self.getData('V('+v_names[1]+')', case, time) - self.getData('V('+v_names[2]+')', case, time)
         else:
             v_num = 0
             for index,vl in enumerate(self.v_list):
@@ -106,7 +106,13 @@ class Ltspice:
             if(v_num == 0):
                 return None
             else:
-                return self.data_raw[self.time_split_point[case]:self.time_split_point[case+1], v_num]
+                data = self.data_raw[self.time_split_point[case]:self.time_split_point[case+1], v_num]
+                if(time == None):
+                    return data
+                else:
+                    return np.interp(time, self.getTime(case), data)
+                    
+                
 
     def getTime(self, case=0):
         return np.abs(self.time_raw[self.time_split_point[case]:self.time_split_point[case+1]])
@@ -143,13 +149,13 @@ def integrate(time, var, interval=None):
     begin = np.searchsorted(time, interval[0])
     end   = np.searchsorted(time, interval[1])
     if(len(time)-1 < end):
-        end = len(time) - 1
+        end = len(time) - 1 #Overflow guard
     
     #Integrate it and return result
     result = np.trapz(var[begin:end], x=time[begin:end])
     return result
 
-
+    
 
 class Tools:
     def __init__(self):

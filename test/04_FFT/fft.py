@@ -1,15 +1,24 @@
 import os
 import ltspice
 import matplotlib.pyplot as plt
+import numpy as np
 
 base = os.path.dirname(__file__)
-fpfft = f"{base}\\fft.fft"
+fp = f"{base}\\fft.fft"
+
+lt = ltspice.Ltspice(fp)
+
+lt.parse()
+vars = lt.getVariableNames()
+print(f"FFT Variables: {vars}")
+
+f = lt.getFrequencies()
+fig, ax = plt.subplots()
 
 
-ltfft = ltspice.Ltspice(fpfft)
+for var in ('V(ip)', 'V(op)'):
+    res = 20 * np.log10(lt.getData(var))
+    ax.semilogx(f, res, label=var)
 
-ltfft.parse()
-
-vars = ltfft.getVariableNames()
-print(f"Variables: {vars}")
-
+fig.legend()
+plt.show()

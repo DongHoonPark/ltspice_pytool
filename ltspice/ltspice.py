@@ -3,8 +3,9 @@ import struct
 import numpy as np
 import itertools
 import re
+import pickle
 
- 
+
 class Ltspice:
     filepath = ''
     dsamp = 1
@@ -73,50 +74,80 @@ class Ltspice:
                 vindex = index
 
         for j in range(self.v_number):
-            vdata = lines[vindex+j+1].split()
+            vdata = lines[vindex + j + 1].split()
             self.v_list.append(vdata[1])
             self.t_list.append(vdata[2])
 
-        self.data_raw = struct.unpack(str(self.p_number * (self.v_number+1)) + 'f', data[i:size])
+        self.fft_mode = self.t_list[0] == 'frequency'
 
-        self.time_raw = [None] * self.p_number
-        for i in range(self.p_number):
-            p1 = struct.pack('f', self.data_raw[i * (self.v_number + 1)])
-            p2 = struct.pack('f', self.data_raw[1 + i * (self.v_number + 1)])
-            self.time_raw[i] = struct.unpack('d', p1 + p2)[0]
+        if self.fft_mode:
+            self.data_raw = struct.unpack(str(self.p_number * (self.v_number * 2)) + 'd', data[i:size])
 
-        self.time_raw = np.array(self.time_raw)
+            self.time_raw = np.array(self.data_raw)[::6]
+        else:
+            self.data_raw = struct.unpack(str(self.p_number * (self.v_number + 1)) + 'f', data[i:size])
+
+            self.time_raw = [None] * self.p_number
+            for i in range(self.p_number):
+                p1 = struct.pack('f', self.data_raw[i * (self.v_number + 1)])
+                p2 = struct.pack('f', self.data_raw[1 + i * (self.v_number + 1)])
+                self.time_raw[i] = struct.unpack('d', p1 + p2)[0]
+
+            self.time_raw = np.array(self.time_raw)
 
         self.c_number = 1
         self.time_split_point.append(0)
-        for i in range(self.p_number-1):
+        for i in range(self.p_number - 1):
             if self.time_raw[i] > self.time_raw[i + 1] and self.time_raw[i + 1] == 0:
-                self.c_number = self.c_number+1
-                self.time_split_point.append(i+1) 
+                self.c_number = self.c_number + 1
+                self.time_split_point.append(i + 1)
         self.time_split_point.append(self.p_number)
 
-        self.data_raw = np.reshape(np.array(self.data_raw), (self.p_number, (self.v_number+1)))
+        if self.fft_mode:
+            data_temp = np.reshape(np.array(self.data_raw), (self.p_number, self.v_number * 2))
+            self.data_raw = np.empty(shape=(self.p_number, self.v_number), dtype=complex)
+            for n, v in enumerate(self.v_list):
+                # TOOD: Store the angle, tried it but it made no sense
+                # cplx = data[:, n * 2] + 1j * data[:, (n * 2) + 1]
+                # ang = np.angle(cplx, deg=True)
+                self.data_raw[:, n] = np.sqrt(np.square(data_temp[:, n * 2]) + np.square(data_temp[:, (n * 2) + 1]))
+        else:
+            self.data_raw = np.reshape(np.array(self.data_raw), (self.p_number, self.v_number + 1))
     
     def getData(self, v_name, case=0, time=None):
         if ',' in v_name:
             v_names = re.split(',|\(|\)', v_name)
-            return self.getData('V('+v_names[1]+')', case, time) - self.getData('V('+v_names[2]+')', case, time)
+            return self.getData('V(' + v_names[1] + ')', case, time) - self.getData('V(' + v_names[2] + ')', case, time)
         else:
             v_num = 0
-            for index, vl in enumerate(self.v_list):
-                if v_name.lower() == vl.lower():
-                    v_num = index + 1
-            if v_num == 0:
-                return None
+            if not self.fft_mode:
+                for index, vl in enumerate(self.v_list):
+                    if v_name.lower() == vl.lower():
+                        v_num = index + 1
+
+                if v_num == 0:
+                    return None
             else:
-                data = self.data_raw[self.time_split_point[case]:self.time_split_point[case+1], v_num]
-                if time is None:
-                    return data
-                else:
-                    return np.interp(time, self.getTime(case), data)
+                vl = [v.lower() for v in self.v_list]
+                if v_name.lower() not in vl:
+                    return None
+                v_num = vl.index(v_name.lower())
+            data = self.data_raw[self.time_split_point[case]:self.time_split_point[case + 1], v_num]
+
+            if time is None:
+                return data
+            else:
+                return np.interp(time, self.getTime(case), data)
 
     def getTime(self, case=0):
+        if self.fft_mode:
+            return None
         return np.abs(self.time_raw[self.time_split_point[case]:self.time_split_point[case + 1]])
+
+    def getFrequencies(self):
+        if not self.fft_mode:
+            return None
+        return np.abs(self.time_raw[self.time_split_point[0]:self.time_split_point[1]])
 
     def getVariableNames(self, case=0):
         return self.v_list

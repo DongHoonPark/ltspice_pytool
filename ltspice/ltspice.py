@@ -104,7 +104,7 @@ class Ltspice:
 
         if self.fft_mode:
             data_temp = np.reshape(np.array(self.data_raw), (self.p_number, self.v_number * 2))
-            self.data_raw = np.empty(shape=(self.p_number, self.v_number), dtype=complex)
+            self.data_raw = np.empty(shape=(self.p_number, self.v_number), dtype=np.float64)
             for n, v in enumerate(self.v_list):
                 # TOOD: Store the angle, tried it but it made no sense
                 # cplx = data[:, n * 2] + 1j * data[:, (n * 2) + 1]

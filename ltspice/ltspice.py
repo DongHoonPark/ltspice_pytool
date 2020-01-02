@@ -3,7 +3,6 @@ import struct
 import numpy as np
 import itertools
 import re
-import pickle
 
 
 class Ltspice:

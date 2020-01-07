@@ -3,6 +3,7 @@
 *.net
 *.tar.gz
 *.whl
+*.pyc
 ltspice.egg-info/*
 dist/*
 build/*

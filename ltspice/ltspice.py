@@ -81,7 +81,7 @@ class Ltspice:
         self.time_raw = [None]*self.p_number
         for i in range(self.p_number):
             self.time_raw[i] = struct.unpack('d', struct.pack('f',self.data_raw[i*(self.v_number+1)]) + struct.pack('f',self.data_raw[1+i*(self.v_number+1)]))[0]
-        
+
         self.time_raw = np.array(self.time_raw)
 
         self.c_number = 1
@@ -154,30 +154,3 @@ def integrate(time, var, interval=None):
     #Integrate it and return result
     result = np.trapz(var[begin:end], x=time[begin:end])
     return result
-
-    
-
-class Tools:
-    def __init__(self):
-        self.metaParam = 'MParameter'
-        self.paramTableLines = []
-
-    def genParamTable(self, param_names, param_case):
-        metaParamDeclareLine = '.step param '+self.metaParam+' list '
-        case = 1
-        
-        for i in range(param_names.__len__()):
-            case = case * param_case[i].__len__()
-            self.paramTableLines.append('.param '+param_names[i]+' = table('+self.metaParam)
-
-        caselist = list(itertools.product(*param_case))
-
-        for i in range(case):
-            metaParamDeclareLine = metaParamDeclareLine + ' ' + str(i) 
-            for j in range(param_names.__len__()):
-                self.paramTableLines[j] = self.paramTableLines[j] + ',' + str(i) + ',' + str(caselist[i][j])
-
-        print(metaParamDeclareLine)
-        for i in range(param_names.__len__()):
-            self.paramTableLines[i] = self.paramTableLines[i] + ')'
-            print(self.paramTableLines[i])

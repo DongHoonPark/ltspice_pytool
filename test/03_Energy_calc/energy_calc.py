@@ -12,12 +12,15 @@ for i in range(l.c_number): # Iteration in simulation cases
     time = l.getTime(i)
     I_R1 = l.getData('I(R1)',i)
     R1 = 1
-    power_R1 = R1 * I_R1 * I_R1 # Calc dissipated power from R1 from 0 to 0.5s
-    a = ltspice.integrate(time, power_R1, [0, 0.5])
+    power_R1 = R1 * I_R1 * I_R1 # Calc dissipated power from R1 from 0 to 5ms
+    a = ltspice.integrate(time, power_R1, [0, 5e-3])
     energy_R1.append(a)
     
 cond = np.linspace(1e-3, 10e-3, 10) #Simulation condition written in .asc file
 
+plt.xlabel("RL circuit inductance (H)")
+plt.ylabel("Energy (J)")
+plt.grid()
 plt.plot(cond, energy_R1)
 plt.show()
     

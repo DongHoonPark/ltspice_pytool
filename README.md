@@ -24,7 +24,7 @@ V1 = l.getData('V(N1)')
 
 #### LTSpice file (.asc)
 
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/01_RC_circuit.JPG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/rc.JPG?raw=true" width="500">
 
 #### Python code (.py)
 
@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-l = ltspice.Ltspice(os.path.dirname(__file__)+'\\01_RC_circuit.raw') 
+l = ltspice.Ltspice(os.path.dirname(__file__)+'\\rc.raw') 
 # Make sure that the .raw file is located in the correct path
 l.parse() 
 
@@ -48,12 +48,12 @@ plt.show()
 ```
 
 #### Output result
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/01_RC_circuit.PNG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/rc.PNG?raw=true" width="500">
 
 ### 02 - Multi point simulation
 
 #### LTSpice file (.asc)
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/02_Rectifier.JPG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/rectifier.JPG?raw=true" width="500">
 
 #### Python code (.py)
 
@@ -63,7 +63,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-l = ltspice.Ltspice(os.path.dirname(__file__)+'\\02_Rectifier.raw') 
+l = ltspice.Ltspice(os.path.dirname(__file__)+'\\rectifier.raw') 
 # Make sure that the .raw file is located in the correct path
 l.parse() 
 
@@ -96,8 +96,8 @@ $ [8.299080580472946, 7.855469107627869, 7.391375303268433, 6.944645524024963, 6
 
 ```
 
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/02_Rectifier.png?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/rectifier.png?raw=true" width="500">
 
-### 03 - Multi point simulation 2d
+If you want to find more usage examples, please refer the test.md documentation. 
 
 ####

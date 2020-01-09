@@ -15,7 +15,7 @@ setup(
   author = 'DonghoonPark',                   # Type in your name
   author_email = 'donghun94@snu.ac.kr',      # Type in your E-Mail
   download_url = 'https://pypi.org/project/ltspice',
-  keywords = ['ltspice', 'multi point simulation'],   # Keywords that define your package best
+  keywords = ['ltspice', 'circuit data analysis', 'multi point simulation'],   # Keywords that define your package best
   install_requires=[            # I get to this in a second
           'numpy',
       ],
@@ -25,5 +25,6 @@ setup(
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
   ],
 )

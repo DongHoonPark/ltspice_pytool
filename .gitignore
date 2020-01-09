@@ -1,4 +1,6 @@
-.idea
+.venv/*
+.idea/*
+.vscode/*
 *.op.raw
 *.log
 *.net

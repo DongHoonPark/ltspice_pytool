@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-l = ltspice.Ltspice(os.path.dirname(__file__)+'/01_RC_circuit.raw') 
-# Make sure that the .raw file is located in the correct path
+l = ltspice.Ltspice(os.path.dirname(__file__)+'/rc.raw') 
 l.parse() 
 
 time = l.getTime()

@@ -48,7 +48,7 @@ plt.show()
 ```
 
 #### Output result
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/rc.PNG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC/rc.PNG?raw=true" width="500">
 
 ### 02 - Multi point simulation
 

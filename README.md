@@ -24,7 +24,7 @@ V1 = l.getData('V(N1)')
 
 #### LTSpice file (.asc)
 
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC_circuit/rc.JPG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC/rc.JPG?raw=true" width="500">
 
 #### Python code (.py)
 

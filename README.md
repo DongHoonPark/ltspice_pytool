@@ -24,7 +24,7 @@ V1 = l.getData('V(N1)')
 
 #### LTSpice file (.asc)
 
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC/rc.JPG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC/rc.jpg?raw=true" width="500">
 
 #### Python code (.py)
 
@@ -48,12 +48,12 @@ plt.show()
 ```
 
 #### Output result
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC/rc.PNG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC/rc.png?raw=true" width="500">
 
 ### 02 - Multi point simulation
 
 #### LTSpice file (.asc)
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/rectifier.JPG?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/rectifier.jpg?raw=true" width="500">
 
 #### Python code (.py)
 

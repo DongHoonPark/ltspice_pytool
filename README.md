@@ -24,7 +24,7 @@ V1 = l.getData('V(N1)')
 
 #### LTSpice file (.asc)
 
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC/rc.jpg?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/examples/01_RC/rc.jpg?raw=true" width="500">
 
 #### Python code (.py)
 
@@ -48,12 +48,12 @@ plt.show()
 ```
 
 #### Output result
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/01_RC/rc.png?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/examples/01_RC/rc.png?raw=true" width="500">
 
 ### 02 - Multi point simulation
 
 #### LTSpice file (.asc)
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/rectifier.jpg?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/examples/02_Rectifier/rectifier.jpg?raw=true" width="500">
 
 #### Python code (.py)
 
@@ -96,7 +96,7 @@ $ [8.299080580472946, 7.855469107627869, 7.391375303268433, 6.944645524024963, 6
 
 ```
 
-<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/rectifier.png?raw=true" width="500">
+<img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/examples/02_Rectifier/rectifier.png?raw=true" width="500">
 
 If you want to find more usage examples, please check examples folder. 
 

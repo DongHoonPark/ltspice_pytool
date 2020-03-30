@@ -6,133 +6,126 @@ import re
 
 
 class Ltspice:
-    filepath = ''
+    file_path = ''
     dsamp = 1
     tags = ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:']
     time_raw = []
     data_raw = []
-    time_split_point = []
+    _case_split_point = []
 
     title = ''
     date = ''
-    plotname = ''
+    plot_name = ''
     flags = ''
 
-    v_number = 0  # variable number
-    p_number = 0  # all point number
-    c_number = 0  # case number
+    _point_num = 0   # all point number
+    _case_num  = 0   # case number
+    _variables = []  # variable list
+    _types     = []  # type list
+    _mode      = 'Transient'
 
-    v_list = []  # variable list
-    t_list = []  # type list
-
-    def __init__(self, filepath):
-        self.filepath = filepath
-        self.time_raw = []
-        self.data_raw = []
-        self.time_split_point = []
-        self.v_list = []
-        self.t_list = []
+    def __init__(self, file_path):
+        self.file_path = file_path
     
     def parse(self, dsamp=1):
-        self.__init__(self.filepath)
         self.dsamp = dsamp
-        size = os.path.getsize(self.filepath)
-        fo = open(self.filepath, 'rb')
+        size = os.path.getsize(self.file_path)
         tmp = b''
         lines = []
         line = ''
-        data = fo.read()  # Binary data read
-        fo.close()
-        i = 0
+
+        with open(self.file_path, 'rb') as f:
+            data = f.read()  # Binary data read
+            f.close()
+
+        bin_index = 0
 
         while 'Binary' not in line:
-            tmp = tmp + bytes([data[i]])
-            if bytes([data[i]]) == b'\n':
-                i = i+1
-                tmp = tmp + bytes([data[i]])
+            tmp = tmp + bytes([data[bin_index]])
+            if bytes([data[bin_index]]) == b'\n':
+                bin_index = bin_index+1
+                tmp = tmp + bytes([data[bin_index]])
                 line = str(tmp, encoding='UTF16')
                 lines.append(line)
                 tmp = b''
-            i = i+1
+            bin_index = bin_index+1
 
         vindex = 0
-        for index, l in enumerate(lines):
-            if self.tags[0] in l:
-                self.title = l[len(self.tags[0]):]
-            if self.tags[1] in l:
-                self.date = l[len(self.tags[1]):]
-            if self.tags[2] in l:
-                self.plotname = l[len(self.tags[2]):]
-            if self.tags[3] in l:
-                self.flags = l[len(self.tags[3]):]
-            if self.tags[4] in l:
-                self.v_number = int(l[len(self.tags[4]):])
-            if self.tags[5] in l:
-                self.p_number = int(l[len(self.tags[5]):])
-            if 'Variables:' in l:
+        for index, line in enumerate(lines):
+            if self.tags[0] in line:
+                self.title = line[len(self.tags[0]):]
+            if self.tags[1] in line:
+                self.date = line[len(self.tags[1]):]
+            if self.tags[2] in line:
+                self.plot_name = line[len(self.tags[2]):]
+            if self.tags[3] in line:
+                self.flags = line[len(self.tags[3]):]
+            if self.tags[4] in line:
+                self._variable_num = int(line[len(self.tags[4]):])
+            if self.tags[5] in line:
+                self._point_num = int(line[len(self.tags[5]):])
+            if 'Variables:' in line:
                 vindex = index
 
-        for j in range(self.v_number):
+        for j in range(self._variable_num):
             vdata = lines[vindex + j + 1].split()
-            self.v_list.append(vdata[1])
-            self.t_list.append(vdata[2])
+            self._variables.append(vdata[1])
+            self._types.append(vdata[2])
 
-        self.fft_mode = self.t_list[0] == 'frequency'
+        if 'FFT' in self.plot_name:
+            self._mode = 'FFT'
+        elif 'Transient' in self.plot_name:
+            self._mode = 'Transient'
+        elif 'AC' in self.plot_name:
+            self._mode = 'AC'
 
 
-        if self.fft_mode:
-            self.data_raw = struct.unpack(str(self.p_number * (self.v_number * 2)) + 'd', data[i:size])
+        if self._mode == 'FFT' or self._mode == 'AC':
+            self.data_raw = np.frombuffer(data[bin_index:], dtype=np.complex128)
+            self.time_raw = np.abs(self.data_raw[::self._variable_num])
+            self.data_raw = np.reshape(self.data_raw, (self._point_num, self._variable_num))
 
-            self.time_raw = np.array(self.data_raw)[::6]
+        elif self._mode == 'Transient':
+            #Check file length
+            expected_data_len = self._point_num * (self._variable_num + 1) * 4
+
+            if len(data) - bin_index == expected_data_len:
+                self.data_raw = np.frombuffer(data[bin_index:], dtype=np.float32)
+                self.time_raw = np.zeros(self._point_num)
+                for i in range(self._point_num):
+                    d = data[bin_index + i * (self._variable_num + 1) * 4: bin_index + i * (self._variable_num + 1) * 4 + 8]
+                    self.time_raw[i] = struct.unpack('d', d)[0]
+
+            self.data_raw = np.reshape(np.array(self.data_raw), (self._point_num, self._variable_num + 1))
+
+        # Split cases
+        self._case_num = 1
+        self._case_split_point.append(0)
+
+        start_value = self.time_raw[0]
+
+        for i in range(self._point_num - 1):
+            if self.time_raw[i] > self.time_raw[i + 1] and self.time_raw[i + 1] == start_value:
+                self._case_num += 1
+                self._case_split_point.append(i + 1)
+        self._case_split_point.append(self._point_num)
+
+    def getData(self, variable, case=0, time=None):
+        if ',' in variable:
+            variable_names = re.split(',|\(|\)', variable)
+            return self.getData('V(' + variable_names[1] + ')', case, time) - self.getData('V(' + variable_names[2] + ')', case, time)
         else:
-            self.data_raw = struct.unpack(str(self.p_number * (self.v_number + 1)) + 'f', data[i:size])
+            variables_lowered = [v.lower() for v in self._variables]
 
-            self.time_raw = [None] * self.p_number
-            for i in range(self.p_number):
-                p1 = struct.pack('f', self.data_raw[i * (self.v_number + 1)])
-                p2 = struct.pack('f', self.data_raw[1 + i * (self.v_number + 1)])
-                self.time_raw[i] = struct.unpack('d', p1 + p2)[0]
+            if variable.lower() not in variables_lowered:
+                return None
 
-            self.time_raw = np.array(self.time_raw)
+            variable_index = variables_lowered.index(variable.lower())
 
-        self.c_number = 1
-        self.time_split_point.append(0)
-        for i in range(self.p_number - 1):
-            if self.time_raw[i] > self.time_raw[i + 1] and self.time_raw[i + 1] == 0:
-                self.c_number = self.c_number + 1
-                self.time_split_point.append(i + 1)
-        self.time_split_point.append(self.p_number)
+            if self._mode == 'Transient':
+                variable_index += 1
 
-        if self.fft_mode:
-            data_temp = np.reshape(np.array(self.data_raw), (self.p_number, self.v_number * 2))
-            self.data_raw = np.empty(shape=(self.p_number, self.v_number), dtype=np.float64)
-            for n, v in enumerate(self.v_list):
-                # TOOD: Store the angle, tried it but it made no sense
-                # cplx = data[:, n * 2] + 1j * data[:, (n * 2) + 1]
-                # ang = np.angle(cplx, deg=True)
-                self.data_raw[:, n] = np.sqrt(np.square(data_temp[:, n * 2]) + np.square(data_temp[:, (n * 2) + 1]))
-        else:
-            self.data_raw = np.reshape(np.array(self.data_raw), (self.p_number, self.v_number + 1))
-    
-    def getData(self, v_name, case=0, time=None):
-        if ',' in v_name:
-            v_names = re.split(',|\(|\)', v_name)
-            return self.getData('V(' + v_names[1] + ')', case, time) - self.getData('V(' + v_names[2] + ')', case, time)
-        else:
-            v_num = 0
-            if not self.fft_mode:
-                for index, vl in enumerate(self.v_list):
-                    if v_name.lower() == vl.lower():
-                        v_num = index + 1
-
-                if v_num == 0:
-                    return None
-            else:
-                vl = [v.lower() for v in self.v_list]
-                if v_name.lower() not in vl:
-                    return None
-                v_num = vl.index(v_name.lower())
-            data = self.data_raw[self.time_split_point[case]:self.time_split_point[case + 1], v_num]
+            data = self.data_raw[self._case_split_point[case]:self._case_split_point[case + 1], variable_index]
 
             if time is None:
                 return data
@@ -140,26 +133,29 @@ class Ltspice:
                 return np.interp(time, self.getTime(case), data)
 
     def getTime(self, case=0):
-        if self.fft_mode:
+        if self._mode == 'Transient':
+            return np.abs(self.time_raw[self._case_split_point[case]:self._case_split_point[case + 1]])
+        else:
             return None
-        return np.abs(self.time_raw[self.time_split_point[case]:self.time_split_point[case + 1]])
 
-    def getFrequencies(self):
-        if not self.fft_mode:
+    def getFrequency(self, case=0):
+        if self._mode == 'FFT' or self._mode == 'AC':
+            return np.abs(self.time_raw[self._case_split_point[case]:self._case_split_point[case + 1]])
+        else:
             return None
-        return np.abs(self.time_raw[self.time_split_point[0]:self.time_split_point[1]])
 
     def getVariableNames(self, case=0):
-        return self.v_list
+        return self._variables
 
     def getVariableTypes(self, case=0):
-        return self.t_list
+        return self._types
 
     def getCaseNumber(self):
-        return self.c_number
+        return self._case_num
 
     def getVariableNumber(self):
-        return self.v_number
+        return len(self._variables)
+
 
 def integrate(time, var, interval=None):
     # Valid interval check 
@@ -188,28 +184,3 @@ def integrate(time, var, interval=None):
 
     return result
 
-
-class Tools:
-    def __init__(self):
-        self.metaParam = 'MParameter'
-        self.paramTableLines = []
-
-    def genParamTable(self, param_names, param_case):
-        metaParamDeclareLine = '.step param ' + self.metaParam+' list '
-        case = 1
-        
-        for i in range(param_names.__len__()):
-            case = case * param_case[i].__len__()
-            self.paramTableLines.append('.param ' + param_names[i] + ' = table(' + self.metaParam)
-
-        caselist = list(itertools.product(*param_case))
-
-        for i in range(case):
-            metaParamDeclareLine = metaParamDeclareLine + ' ' + str(i) 
-            for j in range(param_names.__len__()):
-                self.paramTableLines[j] = self.paramTableLines[j] + ',' + str(i) + ',' + str(caselist[i][j])
-
-        print(metaParamDeclareLine)
-        for i in range(param_names.__len__()):
-            self.paramTableLines[i] = self.paramTableLines[i] + ')'
-            print(self.paramTableLines[i])

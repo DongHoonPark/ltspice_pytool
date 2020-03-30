@@ -18,7 +18,7 @@ time = l.getTime()
 V1 = l.getData('V(N1)')
 ```
 
-## Test
+## Examples
 
 ### 01 - RC Circuit
 
@@ -72,7 +72,7 @@ V_source = l.getData('V(source)')
 V_cap_max = []
 
 plt.plot(time, V_source)
-for i in range(l.c_number): # Iteration in simulation cases 
+for i in range(l._case_num): # Iteration in simulation cases 
     time = l.getTime(i)
     # Case number starts from zero
     # Each case has different time point numbers
@@ -98,6 +98,6 @@ $ [8.299080580472946, 7.855469107627869, 7.391375303268433, 6.944645524024963, 6
 
 <img src="https://github.com/DongHoonPark/ltspice_pytool/blob/master/test/02_Rectifier/rectifier.png?raw=true" width="500">
 
-If you want to find more usage examples, please refer the test.md documentation. 
+If you want to find more usage examples, please check examples folder. 
 
 ####

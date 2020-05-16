@@ -6,26 +6,25 @@ import re
 
 
 class Ltspice:
-    file_path = ''
-    dsamp = 1
-    tags = ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:']
-    time_raw = []
-    data_raw = []
-    _case_split_point = []
-
-    title = ''
-    date = ''
-    plot_name = ''
-    flags = ''
-
-    _point_num = 0   # all point number
-    _case_num  = 0   # case number
-    _variables = []  # variable list
-    _types     = []  # type list
-    _mode      = 'Transient'
 
     def __init__(self, file_path):
         self.file_path = file_path
+        self.dsamp = 1
+        self.tags = ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:']
+        self.time_raw = []
+        self.data_raw = []
+        self._case_split_point = []
+
+        self.title = ''
+        self.date = ''
+        self.plot_name = ''
+        self.flags = ''
+
+        self._point_num = 0   # all point number
+        self._case_num  = 0   # case number
+        self._variables = []  # variable list
+        self._types     = []  # type list
+        self._mode      = 'Transient'
     
     def parse(self, dsamp=1):
         self.dsamp = dsamp

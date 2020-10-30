@@ -1,56 +1,78 @@
 import os
-import struct
+from typing import List
 import numpy as np
-import itertools
 import re
+
+class LtspiceException(Exception):
+    pass
+class VariableNotFoundException(LtspiceException):
+    pass
+class FileSizeNotMatchException(LtspiceException):
+    pass
+class UnknownFileTypeException(LtspiceException):
+    pass
 
 
 class Ltspice:
-
+    max_header_size = int(100e3)
     def __init__(self, file_path):
         self.file_path = file_path
         self.dsamp = 1
-        self.tags = ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:']
+        self.tags = ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:', 'Offset:']
         self.time_raw = []
         self.data_raw = []
         self._case_split_point = []
 
+        #TODO : refactor header to another struct
         self.title = ''
         self.date = ''
         self.plot_name = ''
-        self.flags = ''
+        self.flags = []
+        self.offset = 0
 
         self._point_num = 0   # all point number
         self._case_num  = 0   # case number
         self._variables = []  # variable list
         self._types     = []  # type list
-        self._mode      = 'Transient'
-    
-    def parse(self, dsamp=1):
-        self.dsamp = dsamp
-        size = os.path.getsize(self.file_path)
-        tmp = b''
-        lines = []
-        line = ''
+        self._mode      = 'Transient' # support Transient, AC, FFT
+        self._file_type = "" # Binary / Ascii
+        self._precision = 'auto'
 
+        self.header_size = 0
+        self.read_header()
+
+    def read_header(self):
+        filesize = os.stat(self.file_path).st_size
+        
         with open(self.file_path, 'rb') as f:
-            data = f.read()  # Binary data read
-            f.close()
+            if filesize > self.max_header_size:
+                data = f.read(self.max_header_size)  
+            else:
+                data = f.read()  
 
-        bin_index = 0
-
-        while 'Binary' not in line:
-            tmp = tmp + bytes([data[bin_index]])
-            if bytes([data[bin_index]]) == b'\n':
-                bin_index = bin_index+1
-                tmp = tmp + bytes([data[bin_index]])
-                line = str(tmp, encoding='UTF16')
+        line = ''
+        lines = []   
+        fp_line_begin = 0
+        fp_line_end = 0
+        while not ('Binary' in line or 'Value' in line):
+            if bytes([data[fp_line_end]]) == b'\n':
+                line = str(bytes(data[fp_line_begin:fp_line_end+2]), encoding='UTF16')
                 lines.append(line)
-                tmp = b''
-            bin_index = bin_index+1
+                fp_line_begin = fp_line_end+2
+                fp_line_end   = fp_line_begin
+            else:
+                fp_line_end += 1
+        lines = [x.rstrip() for x in lines]
 
-        vindex = 0
-        for index, line in enumerate(lines):
+        # remove string header from binary data 
+        self.header_size = fp_line_end
+        data = data[self.header_size:]
+
+        vindex = lines.index('Variables:')
+        header_text   = lines[0:vindex]
+        variable_text = lines[vindex+1:-1]
+
+        for line in header_text:
             if self.tags[0] in line:
                 self.title = line[len(self.tags[0]):]
             if self.tags[1] in line:
@@ -58,19 +80,20 @@ class Ltspice:
             if self.tags[2] in line:
                 self.plot_name = line[len(self.tags[2]):]
             if self.tags[3] in line:
-                self.flags = line[len(self.tags[3]):]
+                self.flags = line[len(self.tags[3]):].split(' ')
             if self.tags[4] in line:
                 self._variable_num = int(line[len(self.tags[4]):])
             if self.tags[5] in line:
                 self._point_num = int(line[len(self.tags[5]):])
-            if 'Variables:' in line:
-                vindex = index
+            if self.tags[6] in line:
+                self.offset = float(line[len(self.tags[5]):])
 
-        for j in range(self._variable_num):
-            vdata = lines[vindex + j + 1].split()
+        for elem in variable_text:
+            vdata = elem.split()
             self._variables.append(vdata[1])
             self._types.append(vdata[2])
 
+        # check mode
         if 'FFT' in self.plot_name:
             self._mode = 'FFT'
         elif 'Transient' in self.plot_name:
@@ -78,25 +101,43 @@ class Ltspice:
         elif 'AC' in self.plot_name:
             self._mode = 'AC'
 
+        # check file type
+        if 'Binary' in lines[-1]:
+            self._file_type = 'Binary'
+        elif 'Value' in lines[-1]:
+            self._file_type = 'Ascii'
+        else:
+            raise UnknownFileTypeException
+    
+    def parse(self):
+        if self._file_type == 'Binary':
 
-        if self._mode == 'FFT' or self._mode == 'AC':
-            self.data_raw = np.frombuffer(data[bin_index:], dtype=np.complex128)
-            self.time_raw = np.abs(self.data_raw[::self._variable_num])
-            self.data_raw = np.reshape(self.data_raw, (self._point_num, self._variable_num))
+            with open(self.file_path, 'rb') as f:
+                data = f.read()[self.header_size:]
 
-        elif self._mode == 'Transient':
-            #Check file length
-            expected_data_len = self._point_num * (self._variable_num + 1) * 4
+            if self._mode == 'FFT' or self._mode == 'AC':
+                self.data_raw = np.frombuffer(data, dtype=np.complex128)
+                self.time_raw = np.abs(self.data_raw[::self._variable_num])
+                self.data_raw = np.reshape(self.data_raw, (self._point_num, self._variable_num))
 
-            if len(data) - bin_index == expected_data_len:
-                self.data_raw = np.frombuffer(data[bin_index:], dtype=np.float32)
-                self.time_raw = np.zeros(self._point_num)
-                for i in range(self._point_num):
-                    d = data[bin_index + i * (self._variable_num + 1) * 4: bin_index + i * (self._variable_num + 1) * 4 + 8]
-                    self.time_raw[i] = struct.unpack('d', d)[0]
+            elif self._mode == 'Transient':
+                #Check file length
+                expected_data_len = self._point_num * (self._variable_num + 1) * 4
 
-            self.data_raw = np.reshape(np.array(self.data_raw), (self._point_num, self._variable_num + 1))
+                if len(data) == expected_data_len:
+                    self.data_raw = np.frombuffer(data, dtype=np.float32)
+                    self.time_raw = np.zeros(self._point_num)
 
+                    for i in range(self._point_num):
+                        d = data[i * (self._variable_num + 1) * 4: i * (self._variable_num + 1) * 4 + 8]
+                        self.time_raw[i] = np.frombuffer(d, dtype=np.float64)
+
+                self.data_raw = np.reshape(np.array(self.data_raw), (self._point_num, self._variable_num + 1))
+
+        elif self._file_type == 'Ascii':
+            with open(self.file_path, 'r') as f:
+                data = f.readlines()
+              
         # Split cases
         self._case_num = 1
         self._case_split_point.append(0)
@@ -109,17 +150,17 @@ class Ltspice:
                 self._case_split_point.append(i + 1)
         self._case_split_point.append(self._point_num)
 
-    def getData(self, variable, case=0, time=None):
-        if ',' in variable:
-            variable_names = re.split(',|\(|\)', variable)
+    def getData(self, name, case=0, time=None):
+        if ',' in name:
+            variable_names = re.split(',|\(|\)', name)
             return self.getData('V(' + variable_names[1] + ')', case, time) - self.getData('V(' + variable_names[2] + ')', case, time)
         else:
             variables_lowered = [v.lower() for v in self._variables]
 
-            if variable.lower() not in variables_lowered:
+            if name.lower() not in variables_lowered:
                 return None
 
-            variable_index = variables_lowered.index(variable.lower())
+            variable_index = variables_lowered.index(name.lower())
 
             if self._mode == 'Transient':
                 variable_index += 1
@@ -154,6 +195,13 @@ class Ltspice:
 
     def getVariableNumber(self):
         return len(self._variables)
+
+    @property
+    def time(self):
+        return self.getTime(case=0)
+
+    
+
 
 
 def integrate(time, var, interval=None):

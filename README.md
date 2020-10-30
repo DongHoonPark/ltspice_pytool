@@ -12,10 +12,10 @@ $ pip install ltspice
 import ltspice
 filepath = 'Your ltspice output file (.raw)'
 l = ltspice.Ltspice(filepath)
-l.parse() # Data loading sequence. It may take few minutes.
+l.parse() # Data loading sequence. It may take few minutes for huge file.
 
-time = l.getTime()
-V1 = l.getData('V(N1)')
+time = l.get_time()
+V1 = l.get_data('V(N1)')
 ```
 
 ## Examples
@@ -38,9 +38,9 @@ l = ltspice.Ltspice(os.path.dirname(__file__)+'\\rc.raw')
 # Make sure that the .raw file is located in the correct path
 l.parse() 
 
-time = l.getTime()
-V_source = l.getData('V(source)')
-V_cap = l.getData('V(cap)')
+time = l.get_time()
+V_source = l.get_data('V(source)')
+V_cap = l.get_data('V(cap)')
 
 plt.plot(time, V_source)
 plt.plot(time, V_cap)
@@ -67,16 +67,16 @@ l = ltspice.Ltspice(os.path.dirname(__file__)+'\\rectifier.raw')
 # Make sure that the .raw file is located in the correct path
 l.parse() 
 
-time = l.getTime()
-V_source = l.getData('V(source)')
+time = l.get_time()
+V_source = l.get_data('V(source)')
 V_cap_max = []
 
 plt.plot(time, V_source)
-for i in range(l._case_num): # Iteration in simulation cases 
-    time = l.getTime(i)
+for i in range(l.case_count): # Iteration in simulation cases 
+    time = l.get_time(i)
     # Case number starts from zero
     # Each case has different time point numbers
-    V_cap = l.getData('V(cap,pgnd)',i)
+    V_cap = l.get_data('V(cap,pgnd)',i)
     V_cap_max.append(max(V_cap))
     plt.plot(time, V_cap)
 

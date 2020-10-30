@@ -14,6 +14,7 @@ class FileSizeNotMatchException(LtspiceException):
 class UnknownFileTypeException(LtspiceException):
     pass
 
+
 class Ltspice:
     max_header_size = int(100e3)
     def __init__(self, file_path):
@@ -206,7 +207,7 @@ class Ltspice:
         self._case_split_point.append(self._point_num)
         return self
 
-    def get_data(self, name, case=0, time=None):
+    def get_data(self, name, case=0, time=None, frequency=None):
         if ',' in name:
             variable_names = re.split(r',|\(|\)', name)
             return self.getData('V(' + variable_names[1] + ')', case, time) - self.getData('V(' + variable_names[2] + ')', case, time)
@@ -220,10 +221,14 @@ class Ltspice:
 
             data = self.data_raw[self._case_split_point[case]:self._case_split_point[case + 1], variable_index]
 
-            if time is None:
+            if time is None and frequency is None:
                 return data
+            elif not time is None:
+                return np.interp(time, self.get_time(case), data)
+            elif not frequency is None:
+                return np.interp(frequency, self.get_frequency(case), data)
             else:
-                return np.interp(time, self.getTime(case), data)
+                return None 
     
     def get_time(self, case=0):
         if self._mode == 'Transient':
@@ -246,8 +251,12 @@ class Ltspice:
         return self.getTime(case=0)
 
     @property
+    def frequency(self):
+        return self.get_frequency(case=0)
+
+    @property
     def case_count(self):
-        return len(self._case_split_point)
+        return len(self._case_split_point) - 1
 
     @deprecate
     def getData(self, name, case=0, time=None):

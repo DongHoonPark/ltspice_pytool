@@ -6,16 +6,16 @@ import os
 l = ltspice.Ltspice(os.path.dirname(__file__)+'/rectifier.raw') 
 l.parse() 
 
-time = l.getTime()
-V_source = l.getData('V(source)')
+time = l.get_time()
+V_source = l.get_data('V(source)')
 V_cap_max = []
 
 plt.plot(time, V_source)
-for i in range(l.getCaseNumber()): # Iteration in simulation cases
-    time = l.getTime(i)
-    # Case number starts from zero
+for i in range(l.case_count): # Iteration in simulation cases
+    time = l.get_time(i)
+    # Case count starts from zero
     # Each case has different time point numbers
-    V_cap = l.getData('V(cap,pgnd)',i)
+    V_cap = l.get_data('V(cap,pgnd)',i)
     V_cap_max.append(max(V_cap))
     plt.plot(time, V_cap)
 

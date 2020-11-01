@@ -10,3 +10,4 @@
 ltspice.egg-info/*
 dist/*
 build/*
+*.plt

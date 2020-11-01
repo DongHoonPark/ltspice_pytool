@@ -8,9 +8,9 @@ l.parse()
 
 energy_R1 = []
 
-for i in range(l.getCaseNumber()): # Iteration in simulation cases
-    time = l.getTime(i)
-    I_R1 = l.getData('I(R1)',i)
+for i in range(l.case_count): # Iteration in simulation cases
+    time = l.get_time(i)
+    I_R1 = l.get_data('I(R1)',i)
     R1 = 1
     power_R1 = R1 * I_R1 * I_R1 # Calc dissipated power from R1 from 0 to 5ms
     a = ltspice.integrate(time, power_R1, [0, 5e-3])

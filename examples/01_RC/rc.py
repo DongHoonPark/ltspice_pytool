@@ -6,9 +6,9 @@ import os
 l = ltspice.Ltspice(os.path.dirname(__file__)+'/rc.raw') 
 l.parse() 
 
-time = l.getTime()
-V_source = l.getData('V(source)')
-V_cap = l.getData('V(cap)')
+time = l.get_time()
+V_source = l.get_data('V(source)')
+V_cap = l.get_data('V(cap)')
 
 plt.plot(time, V_source)
 plt.plot(time, V_cap)

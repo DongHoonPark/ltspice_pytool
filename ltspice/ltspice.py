@@ -92,7 +92,6 @@ class Ltspice:
 
         # remove string header from binary data 
         self.header_size = fp_line_end
-        data = data[self.header_size:]
 
         vindex = lines.index('Variables:')
         header_text   = lines[0:vindex]

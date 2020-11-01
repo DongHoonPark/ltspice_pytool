@@ -2,7 +2,7 @@ import unittest
 from ltspice import Ltspice
 import os
 from os import path
-
+import numpy as np
 
 class TestLtspiceMethods(unittest.TestCase):
 
@@ -36,9 +36,13 @@ class TestLtspiceMethods(unittest.TestCase):
         __filepath = os.path.dirname(__file__)
         lt1 = Ltspice(path.join(__filepath, 'rl_circuit_fft.fft')).parse()
         lt2 = Ltspice(path.join(__filepath, 'rl_circuit_fftascii.fft')).parse()
-        self.assertTrue(abs(lt1.get_data('V(R1)', frequency=200) - lt2.get_data('V(R1)', frequency=200)) < 1e-4)
-        pass
+        freq = np.linspace(1000, 130000, 130)
+        x1 = lt1.get_data('V(R1)')
+        x2 = lt2.get_data('V(R1)')
+        err = np.abs((x1 - x2) / (x1.max() - x1.min()))
+        self.assertTrue(err.max() < 0.01)
 
 
 if __name__ == '__main__':
     unittest.main()
+

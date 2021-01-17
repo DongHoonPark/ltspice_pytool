@@ -35,7 +35,7 @@ class Ltspice:
         self._point_num = 0   # all point number
         self._variables = []  # variable list
         self._types     = []  # type list
-        self._mode      = 'Transient' # support Transient, AC, FFT
+        self._mode      = 'Transient' # support Transient, AC, FFT, Noise
         self._file_type = "" # Binary / Ascii
         self._variable_dtype = np.float32
         self._time_dtype     = np.float64
@@ -125,6 +125,8 @@ class Ltspice:
             self._mode = 'Transient'
         elif 'AC' in self.plot_name:
             self._mode = 'AC'
+        elif 'Noise' in self.plot_name:
+            self._mode = 'Noise'
 
         # check file type
         if 'Binary' in lines[-1]:
@@ -236,7 +238,7 @@ class Ltspice:
             return None
 
     def get_frequency(self, case=0):
-        if self._mode == 'FFT' or self._mode == 'AC':
+        if self._mode == 'FFT' or self._mode == 'AC' or self._mode == 'Noise':
             return np.abs(self.time_raw[self._case_split_point[case]:self._case_split_point[case + 1]])
         else:
             return None

@@ -189,7 +189,7 @@ class Ltspice:
                 pass
             if _dtype == np.complex128 or _dtype == np.complex64:
                 self.data_raw = np.array([self._variable_dtype(
-                    complex(*[float(y) for y in x.split('\t')[-1].split(',')])
+                    complex(*[float(y) for y in x.split('\t', 1)[-1].split(',')])
                     ) for  x  in data]).reshape((self._point_num, self._variable_num))
                 pass
             self.time_raw = self.data_raw[:,0]

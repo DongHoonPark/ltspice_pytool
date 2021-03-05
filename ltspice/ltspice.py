@@ -190,6 +190,7 @@ class Ltspice:
                     ) for  x  in data]).reshape((self._point_num, self._variable_num))
                 pass
             if _dtype == np.complex128 or _dtype == np.complex64:
+                data = list(filter(lambda x : len(x) > 0 , data))
                 self.data_raw = np.array([self._variable_dtype(
                     complex(*[float(y) for y in x.split('\t', 1)[-1].split(',')])
                     ) for  x  in data]).reshape((self._point_num, self._variable_num))

@@ -46,6 +46,7 @@ class TestLtspiceMethods(unittest.TestCase):
     def test_ac_data(self):
         __filepath = os.path.dirname(__file__)
         lt1 = Ltspice(path.join(__filepath, 'rl_circuit_acascii.raw')).parse()
+        lt2 = Ltspice(path.join(__filepath, 'rl_circuit_ac.raw')).parse()
         pass
 
 

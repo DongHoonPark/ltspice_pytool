@@ -136,6 +136,8 @@ class Ltspice:
             self._mode = 'Transient'
         elif 'AC' in self.plot_name:
             self._mode = 'AC'
+        elif 'DC' in self.plot_name:
+            self._mode = 'DC'
         elif 'Noise' in self.plot_name:
             self._mode = 'Noise'
 
@@ -248,16 +250,19 @@ class Ltspice:
                 return np.interp(frequency, self.get_frequency(case), data)
             else:
                 return None 
+
+    def get_x(self, case=0):
+        return self.x_raw[self._case_split_point[case]:self._case_split_point[case + 1]]
     
     def get_time(self, case=0):
-        if self._mode == 'Transient':
-            return np.abs(self.x_raw[self._case_split_point[case]:self._case_split_point[case + 1]])
+        if self._mode == 'Transient' or self._mode == 'DC':
+            return self.get_x(case = case)
         else:
             raise InvalidPhysicalValueRequestedException
 
     def get_frequency(self, case=0):
         if self._mode == 'FFT' or self._mode == 'AC' or self._mode == 'Noise':
-            return np.abs(self.x_raw[self._case_split_point[case]:self._case_split_point[case + 1]])
+            return np.abs(self.get_x(case = case))
         else:
             raise InvalidPhysicalValueRequestedException
 

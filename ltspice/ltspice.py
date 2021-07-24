@@ -1,9 +1,11 @@
+from __future__ import annotations
 import os
-from typing import List
+from typing import List, Union
 import numpy as np
 import re
+import matplotlib.pyplot as plt
 
-from numpy.lib.utils import deprecate
+from deprecated import deprecated
 
 class LtspiceException(Exception):
     pass
@@ -46,11 +48,11 @@ class Ltspice:
         self.header_size = 0
         self.read_header()
 
-    def set_variable_dtype(self, t):
+    def set_variable_dtype(self, t)->Ltspice:
         self._y_dtype = t
         return self
 
-    def read_header(self):
+    def read_header(self)->None:
         filesize = os.stat(self.file_path).st_size
         
         with open(self.file_path, 'rb') as f:
@@ -77,7 +79,7 @@ class Ltspice:
                 self._encoding = 'utf-16-le'
             except IndexError as e:
                 print("Variable description header size is over 1Mbyte. Please adjust max_header_size manually.")
-                exit()
+                raise e
         except UnicodeDecodeError as e:
             line = ''
             lines = []   
@@ -95,7 +97,7 @@ class Ltspice:
                 self._encoding = 'utf-8'
             except IndexError as e:
                 print("Variable description header size is over 1Mbyte. Please adjust max_header_size manually.")
-                exit()
+                raise e
 
         lines = [x.rstrip().rstrip() for x in lines]
 
@@ -275,61 +277,31 @@ class Ltspice:
     def case_count(self):
         return len(self._case_split_point) - 1
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getData(self, name, case=0, time=None):
         return self.get_data(name, case, time)
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getTime(self,case=0):
         return self.get_time(case)
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getFrequency(self, case=0):
         return self.get_frequency(case)
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getVariableNames(self, case=0):
         return self._variables
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getVariableTypes(self, case=0):
         return self._types
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getCaseNumber(self):
         return len(self._case_split_point)
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getVariableNumber(self):
         return len(self._variables)
-
-
-
-
-def integrate(time, var, interval=None):
-    # Valid interval check 
-    if isinstance(interval, list):
-        if len(interval) == 2:
-            if max(time) < max(interval):
-                return 0
-            else:
-                pass
-        else:
-            return 0
-    elif interval is None:
-        # If interval is None, integrate full range of time
-        interval = [0, max(time)]
-    else:
-        return 0
-
-    # Find begin/ end time index
-    begin = np.searchsorted(time, interval[0])
-    end   = np.searchsorted(time, interval[1])
-    if len(time)-1 < end:
-        end = len(time) - 1  # Overflow guard
-    
-    # Integrate it and return result
-    result = np.trapz(var[begin:end], x=time[begin:end])
-
-    return result
 

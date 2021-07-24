@@ -1,9 +1,11 @@
+from __future__ import annotations
 import os
-from typing import List
+from typing import List, Union
 import numpy as np
 import re
+import matplotlib.pyplot as plt
 
-from numpy.lib.utils import deprecate
+from deprecated import deprecated
 
 class LtspiceException(Exception):
     pass
@@ -11,18 +13,20 @@ class VariableNotFoundException(LtspiceException):
     pass
 class FileSizeNotMatchException(LtspiceException):
     pass
+class InvalidPhysicalValueRequestedException(LtspiceException):
+    pass
 class UnknownFileTypeException(LtspiceException):
     pass
 
 
 class Ltspice:
-    max_header_size = int(100e3)
+    max_header_size = int(1e6)
     def __init__(self, file_path):
         self.file_path = file_path
         self.dsamp = 1
         self.tags = ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:', 'Offset:']
-        self.time_raw = []
-        self.data_raw = []
+        self.x_raw = []
+        self.y_raw = []
         self._case_split_point = []
 
         #TODO : refactor header to another struct
@@ -37,18 +41,18 @@ class Ltspice:
         self._types     = []  # type list
         self._mode      = 'Transient' # support Transient, AC, FFT, Noise
         self._file_type = "" # Binary / Ascii
-        self._variable_dtype = np.float32
-        self._time_dtype     = np.float64
+        self._y_dtype = np.float32
+        self._x_dtype = np.float64
         self._encoding  = ''
 
         self.header_size = 0
         self.read_header()
 
-    def set_variable_dtype(self, t):
-        self._variable_dtype = t
+    def set_variable_dtype(self, t)->Ltspice:
+        self._y_dtype = t
         return self
 
-    def read_header(self):
+    def read_header(self)->None:
         filesize = os.stat(self.file_path).st_size
         
         with open(self.file_path, 'rb') as f:
@@ -63,30 +67,37 @@ class Ltspice:
             lines = []   
             fp_line_begin = 0
             fp_line_end = 0
-            while not ('Binary' in line or 'Values' in line):
-                if bytes([data[fp_line_end]]) == b'\n':
-                    line = str(bytes(data[fp_line_begin:fp_line_end+2]), encoding='UTF16')
-                    lines.append(line)
-                    fp_line_begin = fp_line_end+2
-                    fp_line_end   = fp_line_begin
-                else:
-                    fp_line_end += 1
-            self._encoding = 'utf-16-le'
+            try:
+                while not ('Binary' in line or 'Values' in line):
+                    if bytes([data[fp_line_end]]) == b'\n':
+                        line = str(bytes(data[fp_line_begin:fp_line_end+2]), encoding='UTF16')
+                        lines.append(line)
+                        fp_line_begin = fp_line_end+2
+                        fp_line_end   = fp_line_begin
+                    else:
+                        fp_line_end += 1
+                self._encoding = 'utf-16-le'
+            except IndexError as e:
+                print("Variable description header size is over 1Mbyte. Please adjust max_header_size manually.")
+                raise e
         except UnicodeDecodeError as e:
             line = ''
             lines = []   
             fp_line_begin = 0
             fp_line_end = 0
-            while not ('Binary' in line or 'Values' in line):
-                if bytes([data[fp_line_end]]) == b'\n':
-                    line = str(bytes(data[fp_line_begin:fp_line_end+1]), encoding='UTF8')
-                    lines.append(line)
-                    fp_line_begin = fp_line_end+1
-                    fp_line_end   = fp_line_begin
-                else:
-                    fp_line_end += 1
-            self._encoding = 'utf-8'
-
+            try:
+                while not ('Binary' in line or 'Values' in line):
+                    if bytes([data[fp_line_end]]) == b'\n':
+                        line = str(bytes(data[fp_line_begin:fp_line_end+1]), encoding='UTF8')
+                        lines.append(line)
+                        fp_line_begin = fp_line_end+1
+                        fp_line_end   = fp_line_begin
+                    else:
+                        fp_line_end += 1
+                self._encoding = 'utf-8'
+            except IndexError as e:
+                print("Variable description header size is over 1Mbyte. Please adjust max_header_size manually.")
+                raise e
 
         lines = [x.rstrip().rstrip() for x in lines]
 
@@ -125,28 +136,34 @@ class Ltspice:
             self._mode = 'Transient'
         elif 'AC' in self.plot_name:
             self._mode = 'AC'
+        elif 'DC' in self.plot_name:
+            self._mode = 'DC'
         elif 'Noise' in self.plot_name:
             self._mode = 'Noise'
 
         # check file type
         if 'Binary' in lines[-1]:
             self._file_type = 'Binary'
+
+            if 'double' in self.flags:
+                self._y_dtype = np.float64
+
         elif 'Value' in lines[-1]:
             self._file_type = 'Ascii'
-            self._variable_dtype = np.float64
+            self._y_dtype = np.float64
         else:
             raise UnknownFileTypeException
 
         if self._mode == 'FFT' or self._mode == 'AC':
-            self._variable_dtype = np.complex128
-            self._time_dtype = np.complex128
-        pass
+            self._y_dtype = np.complex128
+            self._x_dtype = np.complex128
+        
     
     def parse(self):
         if self._file_type == 'Binary':
             #Check data size
-            variable_data_size = np.dtype(self._variable_dtype).itemsize  
-            time_data_size     = np.dtype(self._time_dtype).itemsize  
+            variable_data_size = np.dtype(self._y_dtype).itemsize  
+            time_data_size     = np.dtype(self._x_dtype).itemsize  
             diff = int(( time_data_size - variable_data_size ) / variable_data_size)
 
             variable_data_len  = self._point_num * (self._variable_num - 1) * variable_data_size
@@ -159,51 +176,54 @@ class Ltspice:
             if not len(data) == expected_data_len:
                 raise FileSizeNotMatchException
 
-            if self._variable_dtype == self._time_dtype:
-                _dtype = self._time_dtype
-                self.data_raw = np.frombuffer(data, dtype=_dtype)
-                self.time_raw = self.data_raw[::self._variable_num]
-                self.data_raw = np.reshape(self.data_raw, (self._point_num, self._variable_num))
+            if self._y_dtype == self._x_dtype:
+                self._y_dtype = self._x_dtype
+                self.y_raw = np.frombuffer(data, dtype=self._y_dtype)
+                self.x_raw = self.y_raw[::self._variable_num]
+                self.y_raw = np.reshape(self.y_raw, (self._point_num, self._variable_num))
             else:
-                self.data_raw = np.frombuffer(data, dtype=self._variable_dtype)
-                self.time_raw = np.zeros(self._point_num, dtype=self._time_dtype)
+                self.y_raw = np.frombuffer(data, dtype=self._y_dtype)
+                self.x_raw = np.zeros(self._point_num, dtype=self._x_dtype)
                 for i in range(self._point_num):
                     d = data[
                             i * (self._variable_num + diff) * variable_data_size:
                             i * (self._variable_num + diff) * variable_data_size + time_data_size
                         ]
-                    self.time_raw[i] = np.frombuffer(d, dtype=self._time_dtype)
+                    self.x_raw[i] = np.frombuffer(d, dtype=self._x_dtype)
 
-                self.data_raw = np.reshape(np.array(self.data_raw), (self._point_num, self._variable_num + diff))
-                self.data_raw = self.data_raw[:, diff:]
-                self.data_raw[:,0] = self.time_raw
+                self.y_raw = np.reshape(np.array(self.y_raw), (self._point_num, self._variable_num + diff))
+                self.y_raw = self.y_raw[:, diff:]
+                self.y_raw[:,0] = self.x_raw
                 
         elif self._file_type == 'Ascii':
             with open(self.file_path, 'r', encoding=self._encoding) as f:
                 data = f.readlines()
             data = [x.rstrip() for x in data]
             data = data[data.index('Values:') + 1:]
-            _dtype = self._variable_dtype
-            if _dtype == np.float64 or _dtype == np.float32:
-                self.data_raw = np.array([self._variable_dtype(
+
+            if self._y_dtype == np.float64 or self._y_dtype == np.float32:
+                self.y_raw = np.array([self._y_dtype(
                     x.split('\t')[-1]
                     ) for  x  in data]).reshape((self._point_num, self._variable_num))
                 pass
-            if _dtype == np.complex128 or _dtype == np.complex64:
-                self.data_raw = np.array([self._variable_dtype(
+
+            if self._y_dtype == np.complex128 or self._y_dtype == np.complex64:
+                data = list(filter(lambda x : len(x) > 0 , data))
+                self.y_raw = np.array([self._y_dtype(
                     complex(*[float(y) for y in x.split('\t', 1)[-1].split(',')])
                     ) for  x  in data]).reshape((self._point_num, self._variable_num))
                 pass
-            self.time_raw = self.data_raw[:,0]
+
+            self.x_raw = self.y_raw[:,0]
             pass
               
         # Split cases
         self._case_split_point.append(0)
 
-        start_value = self.time_raw[0]
+        start_value = self.x_raw[0]
 
         for i in range(self._point_num - 1):
-            if self.time_raw[i] > self.time_raw[i + 1] and self.time_raw[i + 1] == start_value:
+            if self.x_raw[i + 1] == start_value:
                 self._case_split_point.append(i + 1)
         self._case_split_point.append(self._point_num)
         return self
@@ -211,7 +231,7 @@ class Ltspice:
     def get_data(self, name, case=0, time=None, frequency=None):
         if ',' in name:
             variable_names = re.split(r',|\(|\)', name)
-            return self.getData('V(' + variable_names[1] + ')', case, time) - self.getData('V(' + variable_names[2] + ')', case, time)
+            return self.get_data('V(' + variable_names[1] + ')', case, time) - self.get_data('V(' + variable_names[2] + ')', case, time)
         else:
             variables_lowered = [v.lower() for v in self._variables]
 
@@ -220,7 +240,7 @@ class Ltspice:
 
             variable_index = variables_lowered.index(name.lower())
 
-            data = self.data_raw[self._case_split_point[case]:self._case_split_point[case + 1], variable_index]
+            data = self.y_raw[self._case_split_point[case]:self._case_split_point[case + 1], variable_index]
 
             if time is None and frequency is None:
                 return data
@@ -230,26 +250,29 @@ class Ltspice:
                 return np.interp(frequency, self.get_frequency(case), data)
             else:
                 return None 
+
+    def get_x(self, case=0):
+        return self.x_raw[self._case_split_point[case]:self._case_split_point[case + 1]]
     
     def get_time(self, case=0):
-        if self._mode == 'Transient':
-            return np.abs(self.time_raw[self._case_split_point[case]:self._case_split_point[case + 1]])
+        if self._mode == 'Transient' or self._mode == 'DC':
+            return self.get_x(case = case)
         else:
-            return None
+            raise InvalidPhysicalValueRequestedException
 
     def get_frequency(self, case=0):
         if self._mode == 'FFT' or self._mode == 'AC' or self._mode == 'Noise':
-            return np.abs(self.time_raw[self._case_split_point[case]:self._case_split_point[case + 1]])
+            return np.abs(self.get_x(case = case))
         else:
-            return None
-    
+            raise InvalidPhysicalValueRequestedException
+
     @property
     def variables(self):
         return self._variables
 
     @property
     def time(self):
-        return self.getTime(case=0)
+        return self.get_time(case=0)
 
     @property
     def frequency(self):
@@ -259,63 +282,31 @@ class Ltspice:
     def case_count(self):
         return len(self._case_split_point) - 1
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getData(self, name, case=0, time=None):
         return self.get_data(name, case, time)
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getTime(self,case=0):
         return self.get_time(case)
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getFrequency(self, case=0):
         return self.get_frequency(case)
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getVariableNames(self, case=0):
         return self._variables
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getVariableTypes(self, case=0):
         return self._types
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getCaseNumber(self):
         return len(self._case_split_point)
 
-    @deprecate
+    @deprecated(version='1.0.0', reason="use method which follows pep8")
     def getVariableNumber(self):
         return len(self._variables)
-
-
-    
-
-
-
-def integrate(time, var, interval=None):
-    # Valid interval check 
-    if isinstance(interval, list):
-        if len(interval) == 2:
-            if max(time) < max(interval):
-                return 0
-            else:
-                pass
-        else:
-            return 0
-    elif interval is None:
-        # If interval is None, integrate full range of time
-        interval = [0, max(time)]
-    else:
-        return 0
-
-    # Find begin/ end time index
-    begin = np.searchsorted(time, interval[0])
-    end   = np.searchsorted(time, interval[1])
-    if len(time)-1 < end:
-        end = len(time) - 1  # Overflow guard
-    
-    # Integrate it and return result
-    result = np.trapz(var[begin:end], x=time[begin:end])
-
-    return result
 

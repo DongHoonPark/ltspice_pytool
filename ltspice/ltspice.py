@@ -20,11 +20,11 @@ class UnknownFileTypeException(LtspiceException):
 
 
 class Ltspice:
-    max_header_size = int(1e6)
-    def __init__(self, file_path):
+    max_header_size : int = int(1e6)
+    def __init__(self, file_path : str):
         self.file_path = file_path
         self.dsamp = 1
-        self.tags = ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:', 'Offset:']
+        self.tags : List[str]= ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:', 'Offset:']
         self.x_raw = []
         self.y_raw = []
         self._case_split_point = []
@@ -39,7 +39,7 @@ class Ltspice:
         self._point_num = 0   # all point number
         self._variables = []  # variable list
         self._types     = []  # type list
-        self._mode      = 'Transient' # support Transient, AC, FFT, Noise
+        self._mode      = 'Transient' # support Transient, AC, FFT, Noise, DC
         self._file_type = "" # Binary / Ascii
         self._y_dtype = np.float32
         self._x_dtype = np.float64
@@ -189,11 +189,15 @@ class Ltspice:
                             i * (self._variable_num + diff) * variable_data_size:
                             i * (self._variable_num + diff) * variable_data_size + time_data_size
                         ]
+                        
                     self.x_raw[i] = np.frombuffer(d, dtype=self._x_dtype)
 
                 self.y_raw = np.reshape(np.array(self.y_raw), (self._point_num, self._variable_num + diff))
                 self.y_raw = self.y_raw[:, diff:]
                 self.y_raw[:,0] = self.x_raw
+            
+            if self._mode == "Transient" or self._mode == "AC" or self._mode == "FFT":
+                self.x_raw = np.abs(self.x_raw)
                 
         elif self._file_type == 'Ascii':
             with open(self.file_path, 'r', encoding=self._encoding) as f:

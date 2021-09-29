@@ -11,3 +11,4 @@ ltspice.egg-info/*
 dist/*
 build/*
 *.plt
+__pycache__

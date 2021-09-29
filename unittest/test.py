@@ -34,6 +34,24 @@ class TestLtspiceMethods(unittest.TestCase):
         self.assertTrue(abs(lt2.get_data('V(R1)', time=0.1) - lt3.get_data('V(R1)', time=0.1)) < 2e-3)
         self.assertTrue(abs(lt3.get_data('V(R1)', time=0.1) - lt1.get_data('V(R1)', time=0.1)) < 2e-3)
 
+        t1 = lt1.get_x()
+        tp_last = 0
+        for tp in t1:
+            self.assertLessEqual(tp_last, tp)
+            tp_last = tp
+        
+        t2 = lt2.get_x()
+        tp_last = 0
+        for tp in t2:
+            self.assertLessEqual(tp_last, tp)
+            tp_last = tp
+   
+        t3 = lt3.get_x()
+        tp_last = 0
+        for tp in t3:
+            self.assertLessEqual(tp_last, tp)
+            tp_last = tp
+
     def test_fft_data(self):
         lt1 = Ltspice(path.join(self.__file_path, 'rl_circuit_fft.fft')).parse()
         lt2 = Ltspice(path.join(self.__file_path, 'rl_circuit_fftascii.fft')).parse()

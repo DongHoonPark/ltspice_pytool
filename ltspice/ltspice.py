@@ -189,15 +189,15 @@ class Ltspice:
                             i * (self._variable_num + diff) * variable_data_size:
                             i * (self._variable_num + diff) * variable_data_size + time_data_size
                         ]
-                    x_val = np.frombuffer(d, dtype=self._x_dtype)
-                    if self._mode == "Transient" or self._mode == "AC" or self._mode == "FFT":
-                        self.x_raw[i] = np.abs(x_val)
-                    else:
-                        self.x_raw[i] = x_val
+                        
+                    self.x_raw[i] = np.frombuffer(d, dtype=self._x_dtype)
 
                 self.y_raw = np.reshape(np.array(self.y_raw), (self._point_num, self._variable_num + diff))
                 self.y_raw = self.y_raw[:, diff:]
                 self.y_raw[:,0] = self.x_raw
+            
+            if self._mode == "Transient" or self._mode == "AC" or self._mode == "FFT":
+                self.x_raw = np.abs(self.x_raw)
                 
         elif self._file_type == 'Ascii':
             with open(self.file_path, 'r', encoding=self._encoding) as f:

@@ -84,7 +84,7 @@ class TestLtspiceMethods(unittest.TestCase):
             passed = False
         
         self.assertTrue(passed)
-        self.assertTrue(lt1.case_count is 28)
+        self.assertTrue(lt1.case_count == 28)
 
 
 if __name__ == '__main__':

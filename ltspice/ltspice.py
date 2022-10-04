@@ -1,9 +1,16 @@
 from __future__ import annotations
 import os
+from pathlib import Path
+import platform
 from typing import List, Union
 import numpy as np
 import re
 import matplotlib.pyplot as plt
+
+if list(map(lambda x: int(x), platform.python_version_tuple())) >= [3, 8, 0]:
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 from deprecated import deprecated
 
@@ -15,16 +22,22 @@ class FileSizeNotMatchException(LtspiceException):
     pass
 class InvalidPhysicalValueRequestedException(LtspiceException):
     pass
-class UnknownFileTypeException(LtspiceException):
+class UnknownEncodingTypeException(LtspiceException):
     pass
 
 
 class Ltspice:
     max_header_size : int = int(1e6)
-    def __init__(self, file_path : str):
+    def __init__(self, file_path : Union[str, Path],
+        mode      :Literal['Transient', 'FFT', 'AC', 'DC', 'Noise', 'Operating Point'] = 'Transient',
+        file_type :Literal['Binary', 'Ascii'] = "Binary",
+        x_dtype : Union[np.float32, np.float64, np.complex128] = np.float64,
+        y_dtype : Union[np.float32, np.float64, np.complex128] = np.float32, 
+        encoding: Literal['utf-16-le', 'utf8', 'unknown'] = 'unknown'):
+        
         self.file_path = file_path
-        self.dsamp = 1
-        self.tags : List[str]= ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:', 'Offset:']
+        self.dsamp : int = 1
+        self.tags  : List[str]= ['Title:', 'Date:', 'Plotname:', 'Flags:', 'No. Variables:', 'No. Points:', 'Offset:']
         self.x_raw = []
         self.y_raw = []
         self._case_split_point = []
@@ -35,15 +48,15 @@ class Ltspice:
         self.plot_name = ''
         self.flags = []
         self.offset = 0
-
-        self._point_num = 0   # all point number
-        self._variables = []  # variable list
-        self._types     = []  # type list
-        self._mode      = 'Transient' # support Transient, AC, FFT, Noise, DC
-        self._file_type = "" # Binary / Ascii
-        self._y_dtype = np.float32
-        self._x_dtype = np.float64
-        self._encoding  = ''
+        
+        self._point_num :int       = 0   # all point number
+        self._variables :List[str] = []  # variable list
+        self._types     :List[str] = []  # type list
+        self._mode       = mode 
+        self._file_type  = file_type
+        self._x_dtype    = x_dtype
+        self._y_dtype    = y_dtype
+        self._encoding   = encoding
 
         self.header_size = 0
         self.read_header()
@@ -55,79 +68,83 @@ class Ltspice:
     def read_header(self)->None:
         filesize = os.stat(self.file_path).st_size
         
+        # if the file is too big, read only the designated amount of bytes
         with open(self.file_path, 'rb') as f:
             if filesize > self.max_header_size:
                 data = f.read(self.max_header_size)  
             else:
                 data = f.read()  
 
-        #TODO : have to find adequate way to determine proper encoding of text..
+        #TODO : have to find more adequate way to determine proper encoding of text..
         try:
-            line = ''
-            lines = []   
-            fp_line_begin = 0
-            fp_line_end = 0
+            buffer_line = ''
+            header_content_lines = []   
+            byte_index_line_begin = 0
+            byte_index_line_end = 0
             try:
-                while not ('Binary' in line or 'Values' in line):
-                    if bytes([data[fp_line_end]]) == b'\n':
-                        line = str(bytes(data[fp_line_begin:fp_line_end+2]), encoding='UTF16')
-                        lines.append(line)
-                        fp_line_begin = fp_line_end+2
-                        fp_line_end   = fp_line_begin
+                while not ('Binary' in buffer_line or 'Values' in buffer_line):
+                    if bytes([data[byte_index_line_end]]) == b'\n':
+                        buffer_line = str(bytes(data[byte_index_line_begin:byte_index_line_end+2]), encoding='UTF16')
+                        header_content_lines.append(buffer_line)
+                        byte_index_line_begin = byte_index_line_end+2
+                        byte_index_line_end   = byte_index_line_begin
                     else:
-                        fp_line_end += 1
+                        byte_index_line_end += 1
                 self._encoding = 'utf-16-le'
             except IndexError as e:
                 print("Variable description header size is over 1Mbyte. Please adjust max_header_size manually.")
                 raise e
         except UnicodeDecodeError as e:
-            line = ''
-            lines = []   
-            fp_line_begin = 0
-            fp_line_end = 0
+            buffer_line = ''
+            header_content_lines = []   
+            byte_index_line_begin = 0
+            byte_index_line_end = 0
             try:
-                while not ('Binary' in line or 'Values' in line):
-                    if bytes([data[fp_line_end]]) == b'\n':
-                        line = str(bytes(data[fp_line_begin:fp_line_end+1]), encoding='UTF8')
-                        lines.append(line)
-                        fp_line_begin = fp_line_end+1
-                        fp_line_end   = fp_line_begin
+                while not ('Binary' in buffer_line or 'Values' in buffer_line):
+                    if bytes([data[byte_index_line_end]]) == b'\n':
+                        buffer_line = str(bytes(data[byte_index_line_begin:byte_index_line_end+1]), encoding='UTF8')
+                        header_content_lines.append(buffer_line)
+                        byte_index_line_begin = byte_index_line_end+1
+                        byte_index_line_end   = byte_index_line_begin
                     else:
-                        fp_line_end += 1
+                        byte_index_line_end += 1
                 self._encoding = 'utf-8'
             except IndexError as e:
                 print("Variable description header size is over 1Mbyte. Please adjust max_header_size manually.")
                 raise e
 
-        lines = [x.rstrip().rstrip() for x in lines]
+        if self._encoding == 'unknown':
+            raise UnknownEncodingTypeException("Unknown encoding type")
+
+        header_content_lines = [x.rstrip().rstrip() for x in header_content_lines]
 
         # remove string header from binary data 
-        self.header_size = fp_line_end
+        self.header_size = byte_index_line_end
 
-        vindex = lines.index('Variables:')
-        header_text   = lines[0:vindex]
-        variable_text = lines[vindex+1:-1]
+        variable_declaration_line_num = header_content_lines.index('Variables:')
+        header_content_only_lines     = header_content_lines[0:variable_declaration_line_num]
+        variable_type_content_lines   = header_content_lines[variable_declaration_line_num+1:-1]
 
-        for line in header_text:
-            if self.tags[0] in line:
-                self.title = line[len(self.tags[0]):]
-            if self.tags[1] in line:
-                self.date = line[len(self.tags[1]):]
-            if self.tags[2] in line:
-                self.plot_name = line[len(self.tags[2]):]
-            if self.tags[3] in line:
-                self.flags = line[len(self.tags[3]):].split(' ')
-            if self.tags[4] in line:
-                self._variable_num = int(line[len(self.tags[4]):])
-            if self.tags[5] in line:
-                self._point_num = int(line[len(self.tags[5]):])
-            if self.tags[6] in line:
-                self.offset = float(line[len(self.tags[6]):])
+        for header_content_line in header_content_only_lines:
+            if self.tags[0] in header_content_line:
+                self.title = header_content_line[len(self.tags[0]):]
+            if self.tags[1] in header_content_line:
+                self.date = header_content_line[len(self.tags[1]):]
+            if self.tags[2] in header_content_line:
+                self.plot_name = header_content_line[len(self.tags[2]):]
+            if self.tags[3] in header_content_line:
+                self.flags = header_content_line[len(self.tags[3]):].split(' ')
+            if self.tags[4] in header_content_line:
+                self._variable_num = int(header_content_line[len(self.tags[4]):])
+            if self.tags[5] in header_content_line:
+                self._point_num = int(header_content_line[len(self.tags[5]):])
+            if self.tags[6] in header_content_line:
+                self.offset = float(header_content_line[len(self.tags[6]):])
 
-        for elem in variable_text:
-            vdata = elem.split()
-            self._variables.append(vdata[1])
-            self._types.append(vdata[2])
+        for variable_type_content_line in variable_type_content_lines:
+            variable_type_split_list = variable_type_content_line.split()
+            self._variables.append(variable_type_split_list[1])
+            self._types.append(variable_type_split_list[2])
 
         # check mode
         if 'FFT' in self.plot_name:
@@ -140,19 +157,21 @@ class Ltspice:
             self._mode = 'DC'
         elif 'Noise' in self.plot_name:
             self._mode = 'Noise'
+        elif 'Operating Point' in self.plot_name:
+            self._mode = "Operating Point"
 
         # check file type
-        if 'Binary' in lines[-1]:
+        if 'Binary' in header_content_lines[-1]:
             self._file_type = 'Binary'
 
             if 'double' in self.flags:
                 self._y_dtype = np.float64
 
-        elif 'Value' in lines[-1]:
+        elif 'Value' in header_content_lines[-1]:
             self._file_type = 'Ascii'
             self._y_dtype = np.float64
         else:
-            raise UnknownFileTypeException
+            raise UnknownEncodingTypeException
 
         if self._mode == 'FFT' or self._mode == 'AC':
             self._y_dtype = np.complex128
@@ -174,7 +193,11 @@ class Ltspice:
                 data = f.read()[self.header_size:]
             
             if not len(data) == expected_data_len:
-                raise FileSizeNotMatchException
+                if len(data) == variable_data_len * 2 + time_data_len:
+                    print("[Warning] Variable data type is detected as double precision.")
+                    self._y_dtype = np.float64
+                else:
+                    raise FileSizeNotMatchException
 
             if self._y_dtype == self._x_dtype:
                 self._y_dtype = self._x_dtype

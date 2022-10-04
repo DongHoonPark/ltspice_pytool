@@ -12,3 +12,5 @@ dist/*
 build/*
 *.plt
 __pycache__
+.python-version
+.tox/*

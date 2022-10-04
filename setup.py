@@ -19,7 +19,8 @@ setup(
   download_url = 'https://pypi.org/project/ltspice',
   keywords = ['ltspice', 'circuit data analysis', 'multi point simulation'],   # Keywords that define your package best
   install_requires=[            # I get to this in a second
-          'numpy','deprecated', 'matplotlib'
+          'numpy','deprecated', 'matplotlib',
+          'typing_extensions; python_version < "3.8.0"'
       ],
   classifiers=[
     'License :: OSI Approved :: MIT License',   # Again, pick a license

@@ -9,7 +9,7 @@ $ pip install ltspice
 ## Supported Files
 * encoding : UTF8 / UTF16-LE
 * format : Binary / Ascii
-* extenstion : .raw / .fft
+* extenstion : .raw / .fft / .imp
 
 ## Usage
 

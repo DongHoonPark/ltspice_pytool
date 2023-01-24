@@ -147,7 +147,9 @@ class Ltspice:
             self._types.append(variable_type_split_list[2])
 
         # check mode
-        if 'FFT' in self.plot_name:
+        if 'Impulse' in self.plot_name:
+                self._mode = 'Impulse'
+        elif 'FFT' in self.plot_name:
             self._mode = 'FFT'
         elif 'Transient' in self.plot_name:
             self._mode = 'Transient'
@@ -246,7 +248,6 @@ class Ltspice:
               
         # Split cases
         self._case_split_point.append(0)
-
         start_value = self.x_raw[0]
 
         for i in range(self._point_num - 1):
@@ -282,7 +283,7 @@ class Ltspice:
         return self.x_raw[self._case_split_point[case]:self._case_split_point[case + 1]]
     
     def get_time(self, case=0):
-        if self._mode == 'Transient' or self._mode == 'DC':
+        if self._mode == 'Transient' or self._mode == 'DC' or self._mode == 'Impulse':
             return self.get_x(case = case)
         else:
             raise InvalidPhysicalValueRequestedException

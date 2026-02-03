@@ -206,18 +206,15 @@ class Ltspice:
                 self.y_raw = np.reshape(self.y_raw, (self._point_num, self._variable_num))
             else:
                 self.y_raw = np.frombuffer(data, dtype=self._y_dtype)
-                self.x_raw = np.zeros(self._point_num, dtype=self._x_dtype)
+                time_buffer = b""
                 for i in range(self._point_num):
-                    d = data[
-                            i * (self._variable_num + diff) * variable_data_size:
-                            i * (self._variable_num + diff) * variable_data_size + time_data_size
-                        ]
-                        
-                    self.x_raw[i] = np.frombuffer(d, dtype=self._x_dtype)
-
+                    start = i * (self._variable_num + diff) * variable_data_size
+                    end = start + time_data_size
+                    time_buffer += data[start:end]
+                self.x_raw = np.frombuffer(time_buffer, dtype=self._x_dtype)
                 self.y_raw = np.reshape(np.array(self.y_raw), (self._point_num, self._variable_num + diff))
                 self.y_raw = self.y_raw[:, diff:]
-                self.y_raw[:,0] = self.x_raw
+                self.y_raw[:, 0] = self.x_raw
             
             if self._mode == "Transient" or self._mode == "AC" or self._mode == "FFT":
                 self.x_raw = np.abs(self.x_raw)
